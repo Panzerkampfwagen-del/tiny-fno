@@ -79,19 +79,48 @@ _prepare_build_env()
 from torch.utils.cpp_extension import load  # noqa: E402  (after env prep above)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+_NAME = "spectral_mm_ext"
+_SOURCES = [os.path.join(_HERE, "spectral_mm.cu"),
+            os.path.join(_HERE, "spectral_mm_binding.cpp")]
 _ext = None
+
+
+def _needs_build():
+    """True if the .so is missing or any source is newer than it.
+
+    Mirrors cpp_extension.load's own staleness check, so we can warn before the
+    slow nvcc compile rather than appear hung on a fresh checkout or after a
+    kernel edit.
+    """
+    try:
+        from torch.utils.cpp_extension import _get_build_directory
+        so = os.path.join(_get_build_directory(_NAME, False), _NAME + ".so")
+    except Exception:
+        return True
+    if not os.path.exists(so):
+        return True
+    so_mtime = os.path.getmtime(so)
+    return any(os.path.getmtime(s) > so_mtime for s in _SOURCES)
 
 
 def _load_ext():
     global _ext
     if _ext is None:
+        building = _needs_build()
+        if building:
+            print(f"[spectral_mm] building the CUDA kernel with nvcc; the first "
+                  f"compile takes a few minutes on this GPU (cicc is slow on the "
+                  f"complex-math kernel) and is cached afterward. Streaming "
+                  f"build output below...", file=sys.stderr, flush=True)
         _ext = load(
-            name="spectral_mm_ext",
-            sources=[os.path.join(_HERE, "spectral_mm.cu"),
-                     os.path.join(_HERE, "spectral_mm_binding.cpp")],
-            extra_cuda_cflags=["-O3", "--use_fast_math", "-arch=sm_86"],
+            name=_NAME,
+            sources=_SOURCES,
+            # Lower the cicc (device NVVM) optimization level: it is the slow
+            # pass on this complex-arithmetic kernel and the op is memory-bound,
+            # so -O1 device code costs little runtime but cuts compile time a lot.
+            extra_cuda_cflags=["-O2", "-arch=sm_86", "-Xcicc", "-O1"],
             extra_cflags=["-O3"],
-            verbose=False,
+            verbose=building,
         )
     return _ext
 

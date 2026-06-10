@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # tinyfno task runner.
 #
+#   ./run_all.sh build        pre-compile the CUDA kernel (one-time, a few min;
+#                             do this first so later commands aren't blocked)
 #   ./run_all.sh verify       tests + evaluate + benchmark + profile (uses
 #                             existing checkpoints, no retraining; ~1-2 min)
 #   ./run_all.sh data         generate Burgers (both variants) and NS datasets
@@ -18,6 +20,11 @@ PY=${PY:-/home/aryan/anaconda3/envs/qiskit_clean/bin/python}
 export CUDA_HOME=${CUDA_HOME:-/home/aryan/anaconda3/envs/tinyinfer}
 
 hr() { printf '\n=== %s ===\n' "$1"; }
+
+build() {
+  hr "pre-build CUDA kernel"
+  $PY -c "from kernels.spectral_mm import _load_ext; _load_ext(); print('[build] kernel ready')"
+}
 
 data() {
   hr "Burgers nu=0.1 (headline)"; $PY -m data.burgers       --config configs/burgers.yaml --plot
@@ -47,6 +54,7 @@ clean() {
 }
 
 case "${1:-}" in
+  build) build ;;
   data) data ;;
   train) train ;;
   verify) verify ;;

@@ -175,6 +175,17 @@ Everything uses the `qiskit_clean` python. You do **not** need to `conda
 activate` anything or export `CUDA_HOME` -- the kernel build self-configures
 (`kernels/spectral_mm.py` puts `ninja` and the CUDA toolkit on `PATH` itself).
 
+### First: pre-build the CUDA kernel (one-time)
+
+The custom kernel is JIT-compiled with nvcc on first use. cicc is slow on this
+complex-arithmetic kernel, so the first build takes several minutes; it is
+cached afterward and every later run is instant. Do it once, up front, so it
+does not block (and so it never looks hung -- the build streams nvcc progress):
+
+```
+./run_all.sh build
+```
+
 ### Quickest path: the task runner
 
 ```
@@ -207,13 +218,15 @@ $PY train.py --config configs/navier_stokes.yaml    # ~6 min
 # Evaluate / profile / benchmark / test
 $PY evaluate.py  --config configs/burgers.yaml
 $PY profiling.py --config configs/navier_stokes.yaml --batch 64
-$PY benchmark.py --cin 32 --cout 32 --kmax 12       # first run JIT-builds the kernel (~3 min)
+$PY benchmark.py --cin 32 --cout 32 --kmax 12       # first run JIT-builds the kernel (slow once)
 $PY -m pytest                                       # 13/13
 ```
 
 Notes:
-- The **first** kernel build (`benchmark.py`, or the kernel tests) JIT-compiles
-  with nvcc and takes ~3 min; it is cached afterward.
+- The **first** kernel build (`./run_all.sh build`, or implicitly via
+  `benchmark.py` / the kernel tests) JIT-compiles with nvcc and takes several
+  minutes (cicc is slow on this complex-math kernel); it streams progress and is
+  cached afterward, so every later run is instant.
 - `train.py`/`evaluate.py`/`data` do not touch CUDA at the C++ level and need no
   toolkit -- only the kernel benchmark and `test_kernel.py` compile it.
 - The PDEBench downloader (`$PY -m data.download_ns --list`) is optional; NS
