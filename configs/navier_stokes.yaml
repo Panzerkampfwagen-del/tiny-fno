@@ -1,0 +1,37 @@
+# Navier-Stokes 2D configuration. All hyperparameters live here.
+problem: navier_stokes
+seed: 0
+
+data:
+  path: results/ns_data.h5         # local HDF5 (self-generated or converted)
+  raw_path: results/pdebench_ns.h5 # raw PDEBench download target (download_ns.py)
+  resolution: 64
+  t_ahead: 10                      # predict this many solver steps ahead
+  n_train: 1000
+  n_test: 200
+  # Self-generated vorticity solver parameters (no hardcoded hyperparameters).
+  domain: 1.0                      # [0,1]^2, the standard FNO NS domain
+  nu: 1.0e-3                       # viscosity
+  dt: 1.0e-2                       # solver timestep
+  spinup: 40                       # steps before recording (multiple of t_ahead)
+  grf_kmax: 12                     # initial vorticity GRF band limit
+
+model:
+  in_channels: 3      # u_t + grid x + grid y
+  out_channels: 1
+  width: 32
+  k_max: 12
+  n_blocks: 4
+  proj_hidden: 128
+
+train:
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  epochs: 200
+  batch_size: 16
+  sched_t_max: 200
+  sched_eta_min: 1.0e-5
+  normalize: true
+  amp: true
+  log_every: 10
+  checkpoint: results/fno2d_best.pt

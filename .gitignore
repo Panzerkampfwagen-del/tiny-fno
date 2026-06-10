@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+results/
+*.h5
+*.pt
+*.so
+*.o
+build/
+.pytest_cache/
+kernels/build/
+*.egg-info/
+.vscode/

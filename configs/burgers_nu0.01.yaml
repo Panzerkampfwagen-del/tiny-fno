@@ -1,0 +1,40 @@
+# Burgers' 1D, prompt-literal nu=0.01 hard variant.
+# At nu=0.01 the shocks are ~10x thinner than the nx=64 grid spacing, so the
+# u0 -> u_T map is partly unresolved at this resolution and the relative L2
+# floors around 0.02 (the paper's 0.0015 target belongs to the nu=0.1 regime
+# in configs/burgers.yaml). Kept for faithfulness and as a harder benchmark.
+problem: burgers
+seed: 0
+
+data:
+  path: results/burgers_nu0.01.h5
+  nu: 0.01
+  nx_full: 1024
+  nt_full: 100
+  T: 1.0
+  grf_power: 3.5
+  grf_kmax: 50
+  nx: 64
+  nt: 16
+  n_train: 1000
+  n_test: 100
+
+model:
+  in_channels: 2
+  out_channels: 1
+  width: 64
+  k_max: 16
+  n_blocks: 4
+  proj_hidden: 128
+
+train:
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  epochs: 500
+  batch_size: 64
+  sched_t_max: 500
+  sched_eta_min: 1.0e-5
+  normalize: false
+  amp: true
+  log_every: 10
+  checkpoint: results/fno1d_nu0.01_best.pt
