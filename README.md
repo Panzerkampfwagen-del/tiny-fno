@@ -36,9 +36,25 @@ Measured on an RTX 3050 Laptop (sm_86, 6 GB), torch 2.5.1 / cu121.
 | Peak VRAM (NS, batch 64) | -- | fit budget | 745 MB |
 | Test suite | -- | green | **13/13 pytest** |
 
+### Predictions
+
+Burgers' 1D, input to prediction vs ground truth with the pointwise error:
+
+![Burgers prediction vs ground truth](assets/eval_burgers.png)
+
+Per-sample absolute error across the test set (worst cases are low-amplitude targets, see below):
+
+![Burgers error heatmap](assets/eval_burgers_heatmap.png)
+
+Navier-Stokes 2D, input vorticity to prediction, ground truth, and error field:
+
+![Navier-Stokes prediction and error field](assets/eval_ns.png)
+
 ### Burgers error distribution (the mean/median gap)
 
-`results/burgers_error_analysis.png`. The per-sample error is right-skewed (not
+![Burgers per-sample error distribution and hardness correlation](assets/burgers_error_analysis.png)
+
+The per-sample error is right-skewed (not
 bimodal): median 0.0015, mean 0.0027, p90 0.0048, a thin tail to 0.022. The tail
 is *not* the sharp-shock instances one might expect — error correlates **-0.49**
 with target sharpness and **+0.76** with input sharpness. The hard cases are
@@ -207,6 +223,10 @@ Notes:
 
 These deviate from a literal reading of the prompt; each is deliberate and the
 reasoning is recorded here.
+
+GRF initial conditions and their states at t=T from the spectral solver:
+
+![Burgers GRF initial vs final states](assets/burgers_samples.png)
 
 - **Burgers viscosity.** The prompt pairs nu=0.01 with the Li et al. target of
   rel L2 ~= 0.0015, but that figure is from the paper's nu=0.1 setup. At nu=0.01
