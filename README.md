@@ -142,17 +142,27 @@ This box has no system CUDA. The toolchain is split across conda envs:
 - **Building the CUDA kernel** (Stage 3) needs `nvcc`. We borrow the `tinyinfer`
   conda env, a complete CUDA 12.9 toolkit (same major as torch's cu121).
   `kernels/spectral_mm.py` configures this automatically -- it puts `ninja` and
-  `$CUDA_HOME/bin` on `PATH` and sets `CUDA_HOME` to the tinyinfer toolkit when
-  unset, before importing `torch.utils.cpp_extension` (which snapshots
-  `CUDA_HOME` at import). So the kernel compiles from any shell with no
-  activation and no exports. To override the toolkit, set `CUDA_HOME` yourself:
+  `$CUDA_HOME/bin` on `PATH`, sets `CUDA_HOME` to the tinyinfer toolkit when
+  unset, and (if the tinyinfer env contains GCC ≤ 14) points nvcc's host
+  compiler there via `-ccbin` and sets `CC`/`CXX` accordingly. This matters
+  when the system GCC is newer than what CUDA supports (CUDA 12.9 tops out at
+  GCC 14). So the kernel compiles from any shell with no activation and no
+  exports. To override the toolkit, set `CUDA_HOME` yourself:
 
   ```
   export CUDA_HOME=/path/to/cuda-12.x   # optional; only to override the default
   ```
 
+  The `tinyinfer` env should be created with:
+  ```
+  conda create -n tinyinfer python=3.11
+  conda install -n tinyinfer -c nvidia cuda-toolkit=12.9
+  conda install -n tinyinfer -c conda-forge ninja gcc=12 gxx=12
+  ```
+
   Headers are found under `$CUDA_HOME/targets/x86_64-linux/include`; target arch
-  is `sm_86`.
+  is `sm_86`. On memory-constrained machines, limit parallel compile jobs:
+  `MAX_JOBS=1 ./run_all.sh build`.
 
 ## Build order
 

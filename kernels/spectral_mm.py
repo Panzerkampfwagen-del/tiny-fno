@@ -74,6 +74,15 @@ def _prepare_build_env():
         if os.path.isdir(nvcc_bin):
             os.environ["PATH"] = nvcc_bin + os.pathsep + os.environ.get("PATH", "")
 
+    # If the system GCC is newer than what CUDA supports (e.g. GCC 15 vs CUDA
+    # 12.9 which tops out at GCC 14), point CC/CXX at the conda-bundled GCC
+    # inside the CUDA toolkit env so both the .cpp and .cu host paths compile.
+    if cuda_home:
+        conda_gxx = os.path.join(cuda_home, "bin", "g++")
+        if os.path.isfile(conda_gxx):
+            os.environ.setdefault("CC",  os.path.join(cuda_home, "bin", "gcc"))
+            os.environ.setdefault("CXX", conda_gxx)
+
 
 _prepare_build_env()
 from torch.utils.cpp_extension import load  # noqa: E402  (after env prep above)
@@ -103,6 +112,15 @@ def _needs_build():
     return any(os.path.getmtime(s) > so_mtime for s in _SOURCES)
 
 
+def _cuda_cflags():
+    flags = ["-O2", "-arch=sm_86", "-Xcicc", "-O1"]
+    cuda_home = os.environ.get("CUDA_HOME", "")
+    conda_gxx = os.path.join(cuda_home, "bin", "g++") if cuda_home else ""
+    if conda_gxx and os.path.isfile(conda_gxx):
+        flags += ["-ccbin", conda_gxx]
+    return flags
+
+
 def _load_ext():
     global _ext
     if _ext is None:
@@ -118,7 +136,7 @@ def _load_ext():
             # Lower the cicc (device NVVM) optimization level: it is the slow
             # pass on this complex-arithmetic kernel and the op is memory-bound,
             # so -O1 device code costs little runtime but cuts compile time a lot.
-            extra_cuda_cflags=["-O2", "-arch=sm_86", "-Xcicc", "-O1"],
+            extra_cuda_cflags=_cuda_cflags(),
             extra_cflags=["-O3"],
             verbose=building,
         )
