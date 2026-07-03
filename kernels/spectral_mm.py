@@ -16,12 +16,6 @@ import sys
 
 import torch
 
-# This box has no system CUDA; nvcc lives in a separate conda env from torch.
-# We discover a toolkit (see _discover_cuda_home) and only fall back to this
-# developer env as a last resort, so other machines are unaffected.
-_TINYINFER_CUDA = "/home/aryan/anaconda3/envs/tinyinfer"
-
-
 def _is_toolkit(path):
     """True if `path` looks like a CUDA toolkit root (has bin/nvcc)."""
     return bool(path) and os.path.isfile(os.path.join(path, "bin", "nvcc"))
@@ -30,8 +24,9 @@ def _is_toolkit(path):
 def _discover_cuda_home():
     """Find a CUDA toolkit without hardcoding a machine.
 
-    Order: nvcc already on PATH, the active conda env, sibling conda envs (this
-    box keeps nvcc in a different env from torch), then the developer default.
+    Order: nvcc already on PATH, the active conda env, then sibling conda envs
+    (some setups keep nvcc in a separate env from torch). Returns None if no
+    toolkit is found; the caller then requires CUDA_HOME to be set manually.
     """
     nvcc = shutil.which("nvcc")
     if nvcc:
@@ -40,7 +35,6 @@ def _discover_cuda_home():
     envs_dir = os.path.dirname(sys.prefix)               # .../envs/<name> -> .../envs
     if os.path.basename(envs_dir) == "envs" and os.path.isdir(envs_dir):
         cands += [os.path.join(envs_dir, e) for e in sorted(os.listdir(envs_dir))]
-    cands.append(_TINYINFER_CUDA)                        # last-resort default
     return next((c for c in cands if _is_toolkit(c)), None)
 
 

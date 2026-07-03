@@ -130,34 +130,39 @@ than diverging.
 
 ## Environment
 
-This box has no system CUDA. The toolchain is split across conda envs:
+If there is no system CUDA, the toolchain can be split across two conda envs:
 
-- **Run everything** with the `qiskit_clean` python (torch 2.5.1, cu121, plus
+- **Run everything** with a `tiny-fno` env (torch 2.5.1, cu121, plus
   h5py / pyyaml / matplotlib / scipy):
 
   ```
-  PY=/home/aryan/anaconda3/envs/qiskit_clean/bin/python
+  conda create -n tiny-fno python=3.11
+  conda activate tiny-fno
+  pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+  pip install h5py pyyaml matplotlib scipy
+  PY=python
   ```
 
-- **Building the CUDA kernel** (Stage 3) needs `nvcc`. We borrow the `tinyinfer`
-  conda env, a complete CUDA 12.9 toolkit (same major as torch's cu121).
-  `kernels/spectral_mm.py` configures this automatically -- it puts `ninja` and
-  `$CUDA_HOME/bin` on `PATH`, sets `CUDA_HOME` to the tinyinfer toolkit when
-  unset, and (if the tinyinfer env contains GCC ≤ 14) points nvcc's host
-  compiler there via `-ccbin` and sets `CC`/`CXX` accordingly. This matters
-  when the system GCC is newer than what CUDA supports (CUDA 12.9 tops out at
-  GCC 14). So the kernel compiles from any shell with no activation and no
-  exports. To override the toolkit, set `CUDA_HOME` yourself:
+- **Building the CUDA kernel** (Stage 3) needs `nvcc`. If it isn't on the
+  system, a separate CUDA-toolkit conda env works (same CUDA major as torch's
+  cu121). `kernels/spectral_mm.py` configures this automatically -- it puts
+  `ninja` and `$CUDA_HOME/bin` on `PATH`, discovers a toolkit among sibling
+  conda envs when `CUDA_HOME` is unset, and (if that env's GCC is ≤ 14) points
+  nvcc's host compiler there via `-ccbin` and sets `CC`/`CXX` accordingly.
+  This matters when the system GCC is newer than what CUDA supports (CUDA
+  12.9 tops out at GCC 14). So the kernel compiles from any shell with no
+  activation and no exports. To override the toolkit, set `CUDA_HOME`
+  yourself:
 
   ```
   export CUDA_HOME=/path/to/cuda-12.x   # optional; only to override the default
   ```
 
-  The `tinyinfer` env should be created with:
+  A dedicated CUDA-toolkit env, if needed, can be created with:
   ```
-  conda create -n tinyinfer python=3.11
-  conda install -n tinyinfer -c nvidia cuda-toolkit=12.9
-  conda install -n tinyinfer -c conda-forge ninja gcc=12 gxx=12
+  conda create -n cuda-toolkit python=3.11
+  conda install -n cuda-toolkit -c nvidia cuda-toolkit=12.9
+  conda install -n cuda-toolkit -c conda-forge ninja gcc=12 gxx=12
   ```
 
   Headers are found under `$CUDA_HOME/targets/x86_64-linux/include`; target arch
@@ -181,8 +186,8 @@ Run `pytest` before and after each stage.
 
 ## How to run
 
-Everything uses the `qiskit_clean` python. You do **not** need to `conda
-activate` anything or export `CUDA_HOME` -- the kernel build self-configures
+Everything uses the `tiny-fno` env's python. Once it's activated, you do
+**not** need to export `CUDA_HOME` -- the kernel build self-configures
 (`kernels/spectral_mm.py` puts `ninja` and the CUDA toolkit on `PATH` itself).
 
 ### First: pre-build the CUDA kernel (one-time)
@@ -214,7 +219,8 @@ in the Results section above.
 ### Or step by step
 
 ```
-PY=/home/aryan/anaconda3/envs/qiskit_clean/bin/python
+conda activate tiny-fno
+PY=python
 
 # Data
 $PY -m data.burgers --config configs/burgers.yaml --plot      # nu=0.1 headline
@@ -280,7 +286,7 @@ GRF initial conditions and their states at t=T from the spectral solver:
 - **Custom kernel layout.** The complex multiply is factored into a swappable
   `mul_fn`, so `kernels/spectral_mm` (a torch.autograd Function over a templated
   CUDA kernel) drops into both SpectralConv1d and SpectralConv2d unchanged. The
-  kernel is built against the `tinyinfer` env's CUDA 12.9 toolkit. It is
+  kernel is built against a CUDA 12.9 toolkit (see Environment above). It is
   templated on scalar_t so gradcheck can run in float64.
 
 - **Profiling uses CUDA events, not torch.profiler.** Under WSL2 here, CUPTI is
