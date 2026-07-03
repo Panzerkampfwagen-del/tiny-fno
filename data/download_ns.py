@@ -79,8 +79,8 @@ def _vorticity(vx, vy):
     multiplies the first-axis wavenumber and the y-derivative the last-axis one.
     """
     nx, ny = vx.shape[-2], vx.shape[-1]
-    kx = 2 * np.pi * np.fft.fftfreq(nx)[:, None]   # d/dx along axis -2
-    ky = 2 * np.pi * np.fft.fftfreq(ny)[None, :]   # d/dy along axis -1
+    kx = 2 * np.pi * np.fft.fftfreq(nx, d=1.0/nx)[:, None]   # d/dx along axis -2
+    ky = 2 * np.pi * np.fft.fftfreq(ny, d=1.0/ny)[None, :]   # d/dy along axis -1
     dvy_dx = np.fft.ifft2(1j * kx * np.fft.fft2(vy)).real
     dvx_dy = np.fft.ifft2(1j * ky * np.fft.fft2(vx)).real
     return dvy_dx - dvx_dy

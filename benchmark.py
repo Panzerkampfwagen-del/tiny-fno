@@ -62,7 +62,7 @@ def bench_multiply(cin, cout, kmax, batches, device):
 
     B = batches[-1]
     ai = mul_flops(B, cin, cout, K) / mul_bytes(B, cin, cout, K)
-    ridge = 9000.0 / 200.0                  # RTX 3050: ~9 TFLOP/s, ~200 GB/s
+    ridge = 5000.0 / 192.0                  # RTX 3050 Laptop: 5.0 TFLOPS FP32, 192 GB/s
     print(f"  arithmetic intensity {ai:.1f} FLOP/byte (ridge ~{ridge:.0f}) -> "
           f"{'memory-bound' if ai < ridge else 'compute-bound'}")
 
@@ -90,8 +90,9 @@ def bench_layer(cin, cout, kmax, batches, device):
         bytes_ = 2 * mul_bytes(B, cin, cout, kmax * kmax)    # two spectral corners
         print(f"\n[tinyfno] SpectralConv2d benchmark  C_in={cin} C_out={cout} "
               f"k_max={kmax}  batch={B}")
-        print("  Implementation       | Latency (us) | BW (GB/s) | vs baseline")
-        print("  ---------------------|--------------|-----------|------------")
+        # "Multiply BW" counts only multiply-portion bytes; latency covers full SpectralConv2d (rfft2+mul+irfft2)
+        print("  Implementation       | Latency (us) | Multiply BW (GB/s) | vs baseline")
+        print("  ---------------------|--------------|--------------------|-----------")
         t_base = None
         for name, fn in impls:
             t = time_us(lambda: fn(x))
